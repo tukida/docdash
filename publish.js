@@ -801,7 +801,7 @@ function renderVersionContent() {
         let content = fs.readFileSync(env.opts.versionPage, env.opts.encoding);
         const parse = markdown.getParser();
         let template = ejs.compile(content);
-        const tagInfo = env.conf.tagInfo.map(item => ({"version": item.release.tag_name, "description": parse(item.release.description) }))
+        const tagInfo = env.conf.tagInfo.map(item => ({"version": item.version, "description": parse(item.description) }))
         content =  template({version: env.conf.version, tagInfo})
         versionHtml = parse(content);
     }
