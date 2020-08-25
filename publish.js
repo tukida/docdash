@@ -9,6 +9,7 @@ var path = require('jsdoc/path');
 var taffy = require('taffydb').taffy;
 var template = require('jsdoc/template');
 var util = require('util');
+var ejs = require('ejs');
 
 var htmlsafe = helper.htmlsafe;
 var linkto = helper.linkto;
@@ -451,7 +452,7 @@ function buildNav(members) {
         Events: buildMemberNav(members.events, 'Events', seen, linkto),
         Namespaces: buildMemberNav(members.namespaces, 'Namespaces', seen, linkto),
         Mixins: buildMemberNav(members.mixins, 'Mixins', seen, linkto),
-        Tutorials: buildMemberNav(members.tutorials, 'Tutorials', seenTutorials, linktoTutorial),
+        Tutorials: buildMemberNav(members.tutorials, 'Getting Started', seenTutorials, linktoTutorial),
         Interfaces: buildMemberNav(members.interfaces, 'Interfaces', seen, linkto),
     };
     order.forEach(member => nav += sections[member]);
@@ -500,6 +501,9 @@ exports.publish = function(taffyData, opts, tutorials) {
 
     var globalUrl = helper.getUniqueFilename('global');
     helper.registerLink('global', globalUrl);
+
+    var versionUrl = helper.getUniqueFilename('version');
+    helper.registerLink('version', versionUrl);
 
     // set up templating
     view.layout = conf.default.layoutFile ?
@@ -579,30 +583,9 @@ exports.publish = function(taffyData, opts, tutorials) {
 
     // update outdir if necessary, then create outdir
     var packageInfo = ( find({kind: 'package'}) || [] ) [0];
-    if (packageInfo) {
-        var subdirs = [outdir];
-
-        if (packageInfo.name) {
-            var packageName = packageInfo.name.split('/');
-
-            if (packageName.length > 1 && docdash.scopeInOutputPath !== false) {
-                subdirs.push(packageName[0]);
-            }
-
-            if (docdash.nameInOutputPath !== false) {
-                subdirs.push((packageName.length > 1 ? packageName[1] : packageName[0]));
-            }
-        }
-
-        if (packageInfo.version && docdash.versionInOutputPath !== false) {
-            subdirs.push(packageInfo.version);
-        }
-
-        if (subdirs.length > 1) {
-            outdir = path.join.apply(null, subdirs);
-        }
+    if (packageInfo && packageInfo.name) {
+        outdir = path.join( outdir, packageInfo.name, (packageInfo.version || '') );
     }
-    
     fs.mkPath(outdir);
 
     // copy the template's static files to outdir
@@ -720,13 +703,19 @@ exports.publish = function(taffyData, opts, tutorials) {
         generate('', 'Global', [{kind: 'globalobj'}], globalUrl);
     }
 
+    generate('', 'Versions', [{kind: 'mainpage', readme: renderVersionContent()}], versionUrl);
+
     // index page displays information from package.json and lists files
     var files = find({kind: 'file'});
     var packages = find({kind: 'package'});
 
-    generate('', 'Home',
+    generate('', env.conf.mainpagetitle || 'Home',
         packages.concat(
-            [{kind: 'mainpage', readme: opts.readme, longname: (opts.mainpagetitle) ? opts.mainpagetitle : 'Main Page'}]
+            [{
+                kind: 'mainpage', 
+                readme: opts.readme, 
+                longname: (opts.mainpagetitle) ? opts.mainpagetitle : 'Main Page'
+            }]
         ).concat(files),
     indexUrl);
 
@@ -772,6 +761,8 @@ exports.publish = function(taffyData, opts, tutorials) {
 
     // TODO: move the tutorial functions to templateHelper.js
     function generateTutorial(title, tutorial, filename) {
+        let template = ejs.compile(tutorial.content);
+        tutorial.content =  template({...env.conf})
         var tutorialData = {
             title: title,
             header: tutorial.title,
@@ -790,10 +781,29 @@ exports.publish = function(taffyData, opts, tutorials) {
     // tutorials can have only one parent so there is no risk for loops
     function saveChildren(node) {
         node.children.forEach(function(child) {
-            generateTutorial('Tutorial: ' + child.title, child, helper.tutorialToUrl(child.name));
+            generateTutorial(null, child, helper.tutorialToUrl(child.name));
             saveChildren(child);
         });
     }
 
     saveChildren(tutorials);
 };
+
+function renderVersionContent() {
+    const env = require('jsdoc/env');
+    const fs = require('jsdoc/fs');
+    const markdown = require('jsdoc/util/markdown');
+
+    let versionHtml;
+
+    if (env.opts.versionPage) {
+        let content = fs.readFileSync(env.opts.versionPage, env.opts.encoding);
+        const parse = markdown.getParser();
+        let template = ejs.compile(content);
+        const tagInfo = env.conf.tagInfo.map(item => ({"version": item.release.tag_name, "description": parse(item.release.description) }))
+        content =  template({version: env.conf.version, tagInfo})
+        versionHtml = parse(content);
+    }
+
+    return versionHtml;
+}
