@@ -798,6 +798,7 @@ function renderHomeContent() {
         let content = fs.readFileSync(env.opts.homePage, env.opts.encoding);
         const parse = markdown.getParser();
         let template = ejs.compile(content);
+        const tagInfo = env.conf.tagInfo.map(item => ({"version": item.version, "description": parse(item.description) }))
         content =  template({...env.conf, tagInfo})
         versionHtml = parse(content);
     }
