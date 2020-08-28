@@ -428,7 +428,6 @@ function linktoExternal(longName, name) {
 
 function buildNav(members) {
     var nav = '<h2><a href="index.html">Home</a></h2>';
-    nav += '<h2><a href="version.html">Versions</a></h2>';
     var seen = {};
     var seenTutorials = {};
     var docdash = env && env.conf && env.conf.docdash || {};
@@ -704,8 +703,6 @@ exports.publish = function(taffyData, opts, tutorials) {
         generate('', 'Global', [{kind: 'globalobj'}], globalUrl);
     }
 
-    generate('', 'Versions', [{kind: 'mainpage', readme: renderVersionContent()}], versionUrl);
-
     // index page displays information from package.json and lists files
     var files = find({kind: 'file'});
     var packages = find({kind: 'package'});
@@ -714,7 +711,7 @@ exports.publish = function(taffyData, opts, tutorials) {
         packages.concat(
             [{
                 kind: 'mainpage', 
-                readme: opts.readme, 
+                readme: renderHomeContent(), 
                 longname: (opts.mainpagetitle) ? opts.mainpagetitle : 'Main Page'
             }]
         ).concat(files),
@@ -790,19 +787,18 @@ exports.publish = function(taffyData, opts, tutorials) {
     saveChildren(tutorials);
 };
 
-function renderVersionContent() {
+function renderHomeContent() {
     const env = require('jsdoc/env');
     const fs = require('jsdoc/fs');
     const markdown = require('jsdoc/util/markdown');
 
     let versionHtml;
 
-    if (env.opts.versionPage) {
-        let content = fs.readFileSync(env.opts.versionPage, env.opts.encoding);
+    if (env.opts.homePage) {
+        let content = fs.readFileSync(env.opts.homePage, env.opts.encoding);
         const parse = markdown.getParser();
         let template = ejs.compile(content);
-        const tagInfo = env.conf.tagInfo.map(item => ({"version": item.version, "description": parse(item.description) }))
-        content =  template({version: env.conf.version, tagInfo})
+        content =  template({...env.conf, tagInfo})
         versionHtml = parse(content);
     }
 
