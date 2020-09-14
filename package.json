@@ -1,6 +1,6 @@
 {
   "name": "docdash-custom",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "A clean, responsive documentation template theme for JSDoc 3 inspired by lodash and minami",
   "main": "publish.js",
   "scripts": {
@@ -27,5 +27,8 @@
     "publish.js",
     "static",
     "tmpl"
-  ]
+  ],
+  "dependencies": {
+    "moment": "^2.28.0"
+  }
 }
